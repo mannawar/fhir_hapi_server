@@ -23,7 +23,8 @@ public class PatientResourceProvider {
     private static final String SERVER_BASE = "https://hapi.fhir.org/baseR5";
 
     @PostMapping("/Patient")
-    public ResponseEntity<Map<String, String>> createPatient(@RequestBody Patient patient){
+    public ResponseEntity<Map<String, String>> createPatient(@RequestBody String patientJson){
+        Patient patient = fhirContext.newJsonParser().parseResource(Patient.class, patientJson);
         IGenericClient client = fhirContext.newRestfulGenericClient(SERVER_BASE);
         MethodOutcome outcome = client.create().resource(patient).execute();
         Map<String, String> response = new HashMap<>();
@@ -37,13 +38,14 @@ public class PatientResourceProvider {
     }
 
     @GetMapping("Patient/{id}")
-    public ResponseEntity<Patient> getPatient(@PathVariable String id){
+    public ResponseEntity<String> getPatient(@PathVariable String id){
         IGenericClient client = fhirContext.newRestfulGenericClient(SERVER_BASE);
 
         try {
             Patient patient = client.read().resource(Patient.class).withId(id).execute();
             if(patient != null){
-                return new ResponseEntity<>(patient, HttpStatus.OK);
+                String patientJson = fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(patient);
+                return new ResponseEntity<>(patientJson, HttpStatus.OK);
             }else {
                 return new ResponseEntity<>(HttpStatus.NOT_FOUND);
             }
@@ -53,11 +55,14 @@ public class PatientResourceProvider {
     }
 
     @PutMapping("Patient/{id}")
-    public ResponseEntity<MethodOutcome> updatePatient(@PathVariable String id, @RequestBody Patient patient){
+    public ResponseEntity<String> updatePatient(@PathVariable String id, @RequestBody String patientJson){
+        Patient patient = fhirContext.newJsonParser().parseResource(Patient.class, patientJson);
         IGenericClient client = fhirContext.newRestfulGenericClient(SERVER_BASE);
         patient.setId(new IdType("Patient", id));
         MethodOutcome outcome = client.update().resource(patient).execute();
-        return new ResponseEntity<>(outcome, HttpStatus.OK);
+
+        String updatedPatientJson = fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(patient);
+        return new ResponseEntity<>(updatedPatientJson, HttpStatus.OK);
     }
 
     @DeleteMapping("/Patient/{id}")
