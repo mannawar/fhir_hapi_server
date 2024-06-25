@@ -30,16 +30,22 @@ public class PatientResourceProvider {
 
     @PostMapping("/Patient")
     public ResponseEntity<Map<String, String>> createPatient(@RequestBody String patientJson){
-        Patient patient = fhirContext.newJsonParser().parseResource(Patient.class, patientJson);
-        IGenericClient client = fhirContext.newRestfulGenericClient(SERVER_BASE);
-        MethodOutcome outcome = client.create().resource(patient).execute();
         Map<String, String> response = new HashMap<>();
+        try {
+            Patient patient = fhirContext.newJsonParser().parseResource(Patient.class, patientJson);
+            IGenericClient client = fhirContext.newRestfulGenericClient(SERVER_BASE);
+            MethodOutcome outcome = client.create().resource(patient).execute();
 
-        if(outcome.getCreated()){
-            response.put("id", outcome.getId().getIdPart());
-            return new ResponseEntity<>(response, HttpStatus.CREATED);
-        }else {
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            if (outcome.getCreated()) {
+                response.put("id", outcome.getId().getIdPart());
+                return new ResponseEntity<>(response, HttpStatus.CREATED);
+            } else {
+                response.put("message", "Failed to create patient");
+                return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+        }catch(Exception e){
+            response.put("message", "An error occurred while creating the patient: " + e.getMessage());
+            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -73,7 +79,6 @@ public class PatientResourceProvider {
     @GetMapping("Patient/{id}")
     public ResponseEntity<String> getPatient(@PathVariable String id){
         IGenericClient client = fhirContext.newRestfulGenericClient(SERVER_BASE);
-
         try {
             Patient patient = client.read().resource(Patient.class).withId(id).execute();
             if(patient != null){
@@ -89,19 +94,41 @@ public class PatientResourceProvider {
 
     @PutMapping("Patient/{id}")
     public ResponseEntity<String> updatePatient(@PathVariable String id, @RequestBody String patientJson){
-        IGenericClient client = fhirContext.newRestfulGenericClient(SERVER_BASE);
-        Patient patient = fhirContext.newJsonParser().parseResource(Patient.class, patientJson);
-        patient.setId(new IdType("Patient", id));
-        MethodOutcome outcome = client.update().resource(patient).execute();
+        try {
+            IGenericClient client = fhirContext.newRestfulGenericClient(SERVER_BASE);
+            Patient patient = fhirContext.newJsonParser().parseResource(Patient.class, patientJson);
+            patient.setId(new IdType("Patient", id));
+            MethodOutcome outcome = client.update().resource(patient).execute();
+            if (outcome.getResource() != null) {
+                String updatedPatientJson = fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(patient);
+                return new ResponseEntity<>(updatedPatientJson, HttpStatus.OK);
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("{\"message\": \"Patient not found or failed to update.\"}");
+            }
+        }catch(Exception e){
+            String errorMessage = "{\"message\": \"An error occurred while updating the patient: " + e.getMessage() + "\"}";
+            return new ResponseEntity<>(errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
 
-        String updatedPatientJson = fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(patient);
-        return new ResponseEntity<>(updatedPatientJson, HttpStatus.OK);
     }
 
     @DeleteMapping("/Patient/{id}")
-    public ResponseEntity<Void> deletePatient(@PathVariable String id){
+    public ResponseEntity<Map<String, String>> deletePatient(@PathVariable String id){
+        Map<String, String> response = new HashMap<>();
         IGenericClient client = fhirContext.newRestfulGenericClient(SERVER_BASE);
-        client.delete().resourceById(new IdType("Patient", id)).execute();
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        try {
+            Patient patient = client.read().resource(Patient.class).withId(id).execute();
+            if(patient == null){
+                response.put("message", "Patient not found.");
+                return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+
+            }
+            client.delete().resourceById(new IdType("Patient", id)).execute();
+            response.put("message", "Patient deleted successfully.");
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }catch(Exception e){
+            response.put("message", "An error occurred while deleting the patient: " + e.getMessage());
+            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 }
