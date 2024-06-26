@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@CrossOrigin(origins = "http://localhost:3020")
 @RestController
 @RequestMapping("/fhir")
 public class PatientResourceProvider {
@@ -129,6 +130,45 @@ public class PatientResourceProvider {
         }catch(Exception e){
             response.put("message", "An error occurred while deleting the patient: " + e.getMessage());
             return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @GetMapping("/Patient/search")
+    public ResponseEntity<String> searchPatient(@RequestParam(required=false) String id,
+                                                @RequestParam(required=false) String name){
+        IGenericClient client = fhirContext.newRestfulGenericClient(SERVER_BASE);
+
+        try{
+            Bundle results;
+            if(id != null){
+                results =
+                        client.search().forResource(Patient.class).where(Patient.RES_ID.exactly().code(id)).returnBundle(Bundle.class).execute();
+            }else if(name != null){
+                results =
+                        client.search().forResource(Patient.class).where(Patient.NAME.matches().values(name)).returnBundle(Bundle.class).execute();
+            }else {
+                results = client.search().forResource(Patient.class).returnBundle(Bundle.class).execute();
+            }
+
+            if(results.getEntry().isEmpty()){
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("{\"message\": \"No Patient found.\"}");
+            }
+
+            List<Patient> patients =
+                    results.getEntry().stream().map(entry -> (Patient) entry.getResource()).collect(Collectors.toList());
+
+            PatientList patientList = new PatientList();
+            patientList.setPatients(patients);
+
+            IParser jsonParser = fhirContext.newJsonParser();
+            jsonParser.setPrettyPrint(true);
+
+            String patientJson = jsonParser.encodeResourceToString(results);
+
+            return ResponseEntity.ok().header(HttpHeaders.CONTENT_TYPE, "application/json").body(patientJson);
+            
+        }catch(Exception e){
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("{\"message\": \"An error occurred while fetching patients.\"}");
         }
     }
 }
