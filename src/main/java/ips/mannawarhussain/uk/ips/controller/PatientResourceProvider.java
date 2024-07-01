@@ -66,7 +66,6 @@ public class PatientResourceProvider {
 
             IParser jsonParser= fhirContext.newJsonParser();
             jsonParser.setPrettyPrint(true);
-
             String patientJson = jsonParser.encodeResourceToString(results);
 
             return ResponseEntity.ok().header(HttpHeaders.CONTENT_TYPE, "application/json").body(patientJson);
