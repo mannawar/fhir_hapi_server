@@ -1,7 +1,6 @@
 package ips.mannawarhussain.uk.ips.repository;
 
-import ips.mannawarhussain.uk.ips.model.PatientEntity;
-import org.hl7.fhir.r4.model.Patient;
+import ips.mannawarhussain.uk.ips.model.PatientEntity;;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

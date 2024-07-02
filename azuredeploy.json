@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "resources": [
+    {
+      "type": "Microsoft.web/sites",
+      "apiVersion": "2023-12-01",
+      "name": "[parameters('appName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]"
+      }
+    },
+    {
+      "type": "Microsoft.web/serverfarms",
+      "apiVersion": "2023-12-01",
+      "name": "[parameters('appServicePlanName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "F1",
+        "tier": "Free"
+      },
+      "properties": {
+        "name": "[parameters('appServicePlanName')]"
+      }
+    }
+  ],
+  "parameters": {
+    "appName": {
+      "type": "string",
+      "defaultValue": "FHIR-CRUD-SQLSERVER-SPRING",
+      "metadata": {
+          "description": "Name of the Fhir azure backend app"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "West Europe",
+      "metadata": {
+        "description": "Location for the Fhir azure backend app"
+      }
+    },
+    "appServicePlanName": {
+      "type": "string",
+      "defaultValue": "fhirAppServicePlan",
+      "metadata": {
+        "description": "Name of the azure app service plan"
+      }
+    }
+  }
+}
